@@ -133,7 +133,7 @@
 <body>
 
 <div class="wizard-container" role="main" aria-label="Login to your Wicorn29 Account">
-  <h1 id="login-title">Log In to Wicorn29</h1>
+  <h1 id="login-title">Log In to your Wicorn29 account</h1>
   <div class="progress-bar" aria-hidden="true">
     <div class="progress-step active" id="progress-email"></div>
     <div class="progress-step" id="progress-password"></div>
@@ -200,10 +200,16 @@
   let currentStep = 0;
   let flowUrl = new URLSearchParams(window.location.search).get('flow') || '';
 
-  // Show correct login message based on flow parameter
+  // If flow is present, use it in the title and confirmation message
   if (flowUrl) {
-    document.getElementById('login-title').textContent = `Log into ${flowUrl} with your Wicorn29 account`;
+    const flowSiteName = flowUrl.split('/')[0];
+    document.getElementById('login-title').innerHTML = `Log into <strong>${flowSiteName}</strong> with your Wicorn29 account`;
     flowUrlElement.textContent = flowUrl;
+  }
+
+  // If no flow, default to Wicorn29 account login
+  else {
+    document.getElementById('login-title').textContent = "Log into your Wicorn29 account";
   }
 
   function updateStepVisibility() {
@@ -240,45 +246,43 @@
     return true;
   }
 
-  prevBtn.addEventListener('click', () => {
-    if (currentStep > 0) {
-      currentStep--;
+  nextBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (validateStep()) {
+      currentStep++;
       updateStepVisibility();
     }
   });
 
-  form.addEventListener('submit', async e => {
+  prevBtn.addEventListener('click', () => {
+    currentStep--;
+    updateStepVisibility();
+  });
+
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
-    if (!validateStep()) return;
+    if (validateStep()) {
+      // Simulate login process
+      const token = 'fakeToken12345'; // Replace with actual login logic
+      tokenOutput.textContent = `Your login token: ${token}`;
 
-    if (currentStep < steps.length - 1) {
-      currentStep++;
-      updateStepVisibility();
-      return;
+      // After successful login, show the confirmation screen if flow is present
+      if (flowUrl) {
+        confirmScreen.style.display = 'block';
+        successMsg.textContent = 'Successfully logged in, but please confirm your login choice.';
+      } else {
+        // Directly redirect if no flow is present
+        window.location.href = 'https://wicorn29.net';
+      }
     }
+  });
 
-    nextBtn.disabled = true;
-    prevBtn.disabled = true;
+  confirmBtn.addEventListener('click', () => {
+    window.location.href = flowUrl; // Redirect to the requested URL
+  });
 
-    const email = form.email.value.trim();
-    const password = form.password.value;
-
-    // Simulate login process
-    const token = 'fakeToken12345'; // Replace with actual login logic
-    tokenOutput.textContent = `Your login token: ${token}`;
-
-    // After successful login, show the confirmation screen
-    confirmScreen.style.display = 'block';
-    successMsg.textContent = 'Successfully logged in, but please confirm your login choice.';
-
-    // Show the confirmation options
-    confirmBtn.addEventListener('click', () => {
-      window.location.href = flowUrl; // Redirect to the requested URL
-    });
-
-    cancelBtn.addEventListener('click', () => {
-      window.location.href = document.referrer || 'https://example.com'; // Go back to the previous website
-    });
+  cancelBtn.addEventListener('click', () => {
+    window.location.href = document.referrer || 'https://example.com'; // Go back to the previous website
   });
 
   updateStepVisibility();
