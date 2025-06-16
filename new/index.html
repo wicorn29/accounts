@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Create your Wicorn29 Account</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+  body {
+    font-family: 'Roboto', sans-serif;
+    background: #e8f5e9;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  .wizard-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 3px 15px rgb(0 0 0 / 0.15);
+    width: 420px;
+    max-width: 95vw;
+    padding: 28px 36px 36px;
+  }
+  h1 {
+    font-weight: 500;
+    margin-bottom: 28px;
+    font-size: 26px;
+    color: #2e7d32;
+  }
+  .step {
+    display: none;
+  }
+  .step.active {
+    display: block;
+  }
+  label {
+    font-weight: 600;
+    font-size: 15px;
+    color: #1b5e20;
+    display: block;
+    margin-bottom: 10px;
+  }
+  input[type="email"], input[type="password"], input[type="text"] {
+    width: 100%;
+    padding: 11px 14px;
+    font-size: 17px;
+    border-radius: 5px;
+    border: 1.8px solid #a5d6a7;
+    margin-bottom: 18px;
+    box-sizing: border-box;
+    outline-offset: 3px;
+    transition: border-color 0.3s;
+  }
+  input[type="email"]:focus, input[type="password"]:focus, input[type="text"]:focus {
+    border-color: #388e3c;
+    outline: none;
+  }
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+  }
+  button {
+    background-color: #388e3c;
+    border: none;
+    color: white;
+    padding: 12px 26px;
+    font-size: 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.25s;
+  }
+  button:disabled {
+    background-color: #a5d6a7;
+    cursor: not-allowed;
+  }
+  button:hover:not(:disabled) {
+    background-color: #2e7d32;
+  }
+  .error {
+    color: #d32f2f;
+    font-size: 13.5px;
+    margin-top: -12px;
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+  .success-message {
+    color: #2e7d32;
+    font-weight: 700;
+    font-size: 17px;
+    text-align: center;
+    margin-top: 20px;
+  }
+  .progress-bar {
+    display: flex;
+    margin-bottom: 28px;
+  }
+  .progress-step {
+    flex: 1;
+    height: 5px;
+    margin-right: 10px;
+    background-color: #c8e6c9;
+    border-radius: 3px;
+    transition: background-color 0.4s;
+  }
+  .progress-step.active {
+    background-color: #388e3c;
+  }
+  .progress-step:last-child {
+    margin-right: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="wizard-container" role="main" aria-label="Create your Wicorn29 Account">
+  <h1>Create your Wicorn29 Account</h1>
+  <div class="progress-bar" aria-hidden="true">
+    <div class="progress-step active" id="progress-email"></div>
+    <div class="progress-step" id="progress-password"></div>
+    <div class="progress-step" id="progress-confirm-password"></div>
+    <div class="progress-step" id="progress-name"></div>
+  </div>
+
+  <form id="signup-form" novalidate>
+    <!-- Step 1: Email -->
+    <div class="step active" id="step-email">
+      <label for="email">Email address</label>
+      <input type="email" id="email" name="email" autocomplete="email" required aria-required="true" />
+      <div class="error" id="error-email"></div>
+    </div>
+
+    <!-- Step 2: Password -->
+    <div class="step" id="step-password">
+      <label for="password">Create a password</label>
+      <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required aria-required="true" />
+      <div class="error" id="error-password"></div>
+      <small style="color:#388e3c; font-weight:500; display:block; margin-top:-14px; margin-bottom: 14px; font-size:13px;">
+        Must be at least 8 characters and contain upper &amp; lower case letters, a number, and a symbol.
+      </small>
+    </div>
+
+    <!-- Step 3: Confirm Password -->
+    <div class="step" id="step-confirm-password">
+      <label for="confirm-password">Confirm password</label>
+      <input type="password" id="confirm-password" name="confirm-password" autocomplete="new-password" minlength="8" required aria-required="true" />
+      <div class="error" id="error-confirm-password"></div>
+    </div>
+
+    <!-- Step 4: Name (optional) -->
+    <div class="step" id="step-name">
+      <label for="name">Your name (optional)</label>
+      <input type="text" id="name" name="name" autocomplete="name" />
+      <div class="error" id="error-name"></div>
+    </div>
+
+    <div class="buttons">
+      <button type="button" id="prev-btn" style="display:none">Back</button>
+      <button type="submit" id="next-btn">Next</button>
+    </div>
+
+    <div class="success-message" id="success-message" role="alert" aria-live="polite"></div>
+  </form>
+</div>
+
+<script>
+  (() => {
+    const form = document.getElementById('signup-form');
+    const steps = [...document.querySelectorAll('.step')];
+    const nextBtn = document.getElementById('next-btn');
+    const prevBtn = document.getElementById('prev-btn');
+    const successMsg = document.getElementById('success-message');
+
+    const errors = {
+      email: document.getElementById('error-email'),
+      password: document.getElementById('error-password'),
+      confirmPassword: document.getElementById('error-confirm-password'),
+      name: document.getElementById('error-name'),
+    };
+
+    const progressSteps = [
+      document.getElementById('progress-email'),
+      document.getElementById('progress-password'),
+      document.getElementById('progress-confirm-password'),
+      document.getElementById('progress-name'),
+    ];
+
+    let currentStep = 0;
+
+    function updateStepVisibility() {
+      steps.forEach((step, i) => {
+        step.classList.toggle('active', i === currentStep);
+        progressSteps[i].classList.toggle('active', i <= currentStep);
+      });
+      prevBtn.style.display = currentStep === 0 ? 'none' : 'inline-block';
+      nextBtn.textContent = currentStep === steps.length - 1 ? 'Create Account' : 'Next';
+      clearErrors();
+    }
+
+    function clearErrors() {
+      Object.values(errors).forEach(e => e.textContent = '');
+      successMsg.textContent = '';
+    }
+
+    // Password strength check: upper, lower, number, symbol, min length
+    function isPasswordStrong(pw) {
+      const hasUpper = /[A-Z]/.test(pw);
+      const hasLower = /[a-z]/.test(pw);
+      const hasNumber = /[0-9]/.test(pw);
+      const hasSymbol = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;/]/.test(pw);
+      return pw.length >= 8 && hasUpper && hasLower && hasNumber && hasSymbol;
+    }
+
+    function validateStep() {
+      clearErrors();
+      if (currentStep === 0) {
+        const email = form.email.value.trim();
+        if (!email) {
+          errors.email.textContent = 'Email is required.';
+          return false;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          errors.email.textContent = 'Please enter a valid email address (e.g., user@example.com).';
+          return false;
+        }
+      } else if (currentStep === 1) {
+        const password = form.password.value;
+        if (!password) {
+          errors.password.textContent = 'Password is required.';
+          return false;
+        }
+        if (password.length < 8) {
+          errors.password.textContent = 'Password must be at least 8 characters long.';
+          return false;
+        }
+        if (!/[A-Z]/.test(password)) {
+          errors.password.textContent = 'Password must include at least one uppercase letter.';
+          return false;
+        }
+        if (!/[a-z]/.test(password)) {
+          errors.password.textContent = 'Password must include at least one lowercase letter.';
+          return false;
+        }
+        if (!/[0-9]/.test(password)) {
+          errors.password.textContent = 'Password must include at least one number.';
+          return false;
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;/]/.test(password)) {
+          errors.password.textContent = 'Password must include at least one special character (e.g. !@#$%).';
+          return false;
+        }
+      } else if (currentStep === 2) {
+        const confirm = form['confirm-password'].value;
+        const password = form.password.value;
+        if (!confirm) {
+          errors.confirmPassword.textContent = 'Please confirm your password.';
+          return false;
+        }
+        if (confirm !== password) {
+          errors.confirmPassword.textContent = 'Passwords do not match.';
+          return false;
+        }
+      }
+      return true;
+    }
+
+    prevBtn.addEventListener('click', () => {
+      if (currentStep > 0) {
+        currentStep--;
+        updateStepVisibility();
+      }
+    });
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!validateStep()) return;
+
+      if (currentStep < steps.length - 1) {
+        currentStep++;
+        updateStepVisibility();
+        return;
+      }
+
+      nextBtn.disabled = true;
+      prevBtn.disabled = true;
+
+      const email = form.email.value.trim();
+      const password = form.password.value;
+      const name = form.name.value.trim() || null;
+
+      try {
+        // Signup request
+        const signupRes = await fetch('https://served.wicorn29.net/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, name }),
+          credentials: 'include'
+        });
+        if (!signupRes.ok) {
+          const err = await signupRes.json();
+          throw new Error(err.error || 'Signup failed due to server error.');
+        }
+
+        // Get token request
+        const tokenRes = await fetch('https://served.wicorn29.net/gentoken', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          credentials: 'include'
+        });
+        if (!tokenRes.ok) {
+          const err = await tokenRes.json();
+          throw new Error(err.error || 'Failed to get authentication token.');
+        }
+
+        const tokenData = await tokenRes.json();
+        const token = tokenData.token;
+
+        // Save token cookie for 1 day
+        const expires = new Date(Date.now() + 24*60*60*1000).toUTCString();
+        document.cookie = `w29tkn=${token}; path=/; expires=${expires}; Secure; SameSite=Strict`;
+
+        successMsg.textContent = 'Account created and logged in successfully! Redirecting...';
+
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+
+      } catch (error) {
+        nextBtn.disabled = false;
+        prevBtn.disabled = false;
+        successMsg.textContent = '';
+        alert(error.message);
+      }
+    });
+
+    updateStepVisibility();
+  })();
+</script>
+
+</body>
+</html>
