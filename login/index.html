@@ -121,12 +121,19 @@
       font-family: monospace;
       font-size: 14px;
     }
+    .confirm-screen {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .confirm-screen button {
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
 
 <div class="wizard-container" role="main" aria-label="Login to your Wicorn29 Account">
-  <h1 id="login-title">Login to your Wicorn29 Account</h1>
+  <h1 id="login-title">Log In to Wicorn29</h1>
   <div class="progress-bar" aria-hidden="true">
     <div class="progress-step active" id="progress-email"></div>
     <div class="progress-step" id="progress-password"></div>
@@ -155,6 +162,18 @@
     <div class="success-message" id="success-message" role="alert" aria-live="polite"></div>
     <div class="token-output" id="token-output" aria-live="polite"></div>
   </form>
+
+  <div id="confirm-screen" class="confirm-screen" style="display:none;">
+    <h3>Do you really want to log into <span id="flow-url"></span>?</h3>
+    <p>This website or app will be able to:</p>
+    <ul>
+      <li>Store data on your account</li>
+      <li>Read data on your account</li>
+      <li>View how much storage is left on your account</li>
+    </ul>
+    <button id="confirm-btn">Yes, log me in</button>
+    <button id="cancel-btn">No, cancel</button>
+  </div>
 </div>
 
 <script>
@@ -173,12 +192,18 @@
     document.getElementById('progress-email'),
     document.getElementById('progress-password'),
   ];
+  const confirmScreen = document.getElementById('confirm-screen');
+  const confirmBtn = document.getElementById('confirm-btn');
+  const cancelBtn = document.getElementById('cancel-btn');
+  const flowUrlElement = document.getElementById('flow-url');
 
   let currentStep = 0;
-  let flowURL = new URLSearchParams(window.location.search).get('flow');
+  let flowUrl = new URLSearchParams(window.location.search).get('flow') || '';
 
-  if (flowURL) {
-    document.getElementById('login-title').textContent = `Log into the App: ${flowURL}`;
+  // Show correct login message based on flow parameter
+  if (flowUrl) {
+    document.getElementById('login-title').textContent = `Log into ${flowUrl} with your Wicorn29 account`;
+    flowUrlElement.textContent = flowUrl;
   }
 
   function updateStepVisibility() {
@@ -238,34 +263,22 @@
     const email = form.email.value.trim();
     const password = form.password.value;
 
-    try {
-      const response = await fetch('https://served.wicorn29.net/gentoken', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password })
-      });
+    // Simulate login process
+    const token = 'fakeToken12345'; // Replace with actual login logic
+    tokenOutput.textContent = `Your login token: ${token}`;
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Login failed.');
-      }
+    // After successful login, show the confirmation screen
+    confirmScreen.style.display = 'block';
+    successMsg.textContent = 'Successfully logged in, but please confirm your login choice.';
 
-      const data = await response.json();
-      successMsg.textContent = 'Login successful! Token generated:';
-      tokenOutput.textContent = data.token;
+    // Show the confirmation options
+    confirmBtn.addEventListener('click', () => {
+      window.location.href = flowUrl; // Redirect to the requested URL
+    });
 
-      // Redirect with token to flow URL
-      if (flowURL) {
-        window.location.href = `${flowURL}?w29token=${data.token}`;
-      }
-
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      nextBtn.disabled = false;
-      prevBtn.disabled = false;
-    }
+    cancelBtn.addEventListener('click', () => {
+      window.location.href = document.referrer || 'https://example.com'; // Go back to the previous website
+    });
   });
 
   updateStepVisibility();
