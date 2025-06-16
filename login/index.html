@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login to Your Wicorn29 Account</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #e8f5e9;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .wizard-container {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 3px 15px rgb(0 0 0 / 0.15);
+      width: 420px;
+      max-width: 95vw;
+      padding: 28px 36px 36px;
+    }
+    h1 {
+      font-weight: 500;
+      margin-bottom: 28px;
+      font-size: 26px;
+      color: #2e7d32;
+    }
+    .step {
+      display: none;
+    }
+    .step.active {
+      display: block;
+    }
+    label {
+      font-weight: 600;
+      font-size: 15px;
+      color: #1b5e20;
+      display: block;
+      margin-bottom: 10px;
+    }
+    input[type="email"], input[type="password"] {
+      width: 100%;
+      padding: 11px 14px;
+      font-size: 17px;
+      border-radius: 5px;
+      border: 1.8px solid #a5d6a7;
+      margin-bottom: 18px;
+      box-sizing: border-box;
+      outline-offset: 3px;
+      transition: border-color 0.3s;
+    }
+    input[type="email"]:focus, input[type="password"]:focus {
+      border-color: #388e3c;
+      outline: none;
+    }
+    .buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 14px;
+    }
+    button {
+      background-color: #388e3c;
+      border: none;
+      color: white;
+      padding: 12px 26px;
+      font-size: 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.25s;
+    }
+    button:disabled {
+      background-color: #a5d6a7;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background-color: #2e7d32;
+    }
+    .error {
+      color: #d32f2f;
+      font-size: 13.5px;
+      margin-top: -12px;
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wizard-container" role="main" aria-label="Log into Your Wicorn29 Account">
+  <h1 id="login-title">Log into Your Wicorn29 Account</h1>
+  <form id="login-form" novalidate>
+    <div class="step active" id="step-email">
+      <label for="email">Email address</label>
+      <input type="email" id="email" name="email" autocomplete="email" required aria-required="true" />
+      <div class="error" id="error-email"></div>
+    </div>
+
+    <div class="step" id="step-password">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required aria-required="true" />
+      <div class="error" id="error-password"></div>
+    </div>
+
+    <div class="buttons">
+      <button type="submit" id="login-btn">Log in</button>
+    </div>
+    <div class="success-message" id="success-message" role="alert" aria-live="polite"></div>
+  </form>
+</div>
+
+<script>
+  (() => {
+    const form = document.getElementById('login-form');
+    const loginBtn = document.getElementById('login-btn');
+    const successMsg = document.getElementById('success-message');
+    const errors = {
+      email: document.getElementById('error-email'),
+      password: document.getElementById('error-password')
+    };
+
+    let flowURL = new URLSearchParams(window.location.search).get('flow');
+    if (flowURL) {
+      document.getElementById('login-title').textContent = `Log into the App: ${flowURL}`;
+    }
+
+    function clearErrors() {
+      Object.values(errors).forEach(e => e.textContent = '');
+      successMsg.textContent = '';
+    }
+
+    async function handleLogin() {
+      const email = form.email.value.trim();
+      const password = form.password.value.trim();
+
+      // Simple validation
+      if (!email || !password) {
+        errors.email.textContent = 'Both email and password are required.';
+        return;
+      }
+
+      try {
+        // Simulate login and token generation
+        const loginRes = await fetch('https://served.wicorn29.net/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        if (!loginRes.ok) {
+          const err = await loginRes.json();
+          throw new Error(err.error || 'Login failed due to server error.');
+        }
+
+        const data = await loginRes.json();
+        const token = data.token;
+
+        // Redirect with token back to flow URL
+        if (flowURL) {
+          window.location.href = `${flowURL}?w29token=${token}`;
+        } else {
+          successMsg.textContent = 'Login successful! You can now use your token.';
+        }
+      } catch (error) {
+        errors.email.textContent = error.message;
+      }
+    }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      clearErrors();
+      await handleLogin();
+    });
+  })();
+</script>
+
+</body>
+</html>
