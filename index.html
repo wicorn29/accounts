@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wicorn29 Account Dashboard</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #e8f5e9;
+    margin: 0; padding: 0; min-height: 100vh;
+    display: flex; justify-content: center; align-items: center;
+  }
+  #container {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: 320px;
+    box-shadow: 0 4px 20px rgb(0 0 0 / 0.15);
+  }
+  h2 {
+    margin-top: 0;
+    color: #2e7d32;
+  }
+  input[type="email"], input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0 12px 0;
+    border-radius: 8px;
+    border: 1px solid #a5d6a7;
+    font-size: 16px;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #388e3c;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #2e7d32;
+  }
+  .error {
+    color: #d32f2f;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  #dashboard {
+    display: none;
+  }
+  #logout-btn, #delete-account-btn {
+    margin-top: 12px;
+    background: #d32f2f;
+  }
+  #logout-btn:hover, #delete-account-btn:hover {
+    background: #9a0007;
+  }
+  .storage-info {
+    margin-bottom: 12px;
+  }
+  ul {
+    padding-left: 20px;
+  }
+  li {
+    margin-bottom: 6px;
+  }
+  .app-domain {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .app-actions button {
+    margin-left: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+  }
+  .app-actions button.view {
+    background: #4caf50;
+    color: white;
+  }
+  .app-actions button.edit {
+    background: #2196f3;
+    color: white;
+  }
+  .app-actions button.delete {
+    background: #f44336;
+    color: white;
+  }
+  textarea {
+    width: 100%;
+    height: 100px;
+    margin-top: 8px;
+    font-family: monospace;
+  }
+  #appdata-section {
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<div id="container">
+  <!-- Login Form -->
+  <div id="login-form">
+    <h2>Login to Wicorn29</h2>
+    <div id="login-error" class="error" role="alert" aria-live="assertive"></div>
+    <input type="email" id="email" placeholder="Email" required autocomplete="username" />
+    <input type="password" id="password" placeholder="Password" required autocomplete="current-password" />
+    <button id="login-btn">Log In</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" aria-live="polite">
+    <h2>Welcome, <span id="user-email"></span></h2>
+    <button id="logout-btn">Log Out</button>
+
+    <div id="storage-section">
+      <h3>Storage Usage</h3>
+      <div class="storage-info" id="storage-info">Loading...</div>
+    </div>
+
+    <div id="apps-section">
+      <h3>Your Apps</h3>
+      <ul id="apps-list">Loading apps...</ul>
+    </div>
+
+    <div id="appdata-section" style="display:none;">
+      <h3>App Data for <span id="current-app-domain"></span></h3>
+      <textarea id="appdata-textarea"></textarea>
+      <button id="save-appdata-btn">Save</button>
+      <button id="cancel-appdata-btn">Cancel</button>
+    </div>
+
+    <button id="delete-account-btn">Delete Account</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const API_BASE = 'https://wicorn29.net'; // Adjust as needed
+  let bearerToken = null;
+  let currentUserEmail = '';
+  let apps = [
+    { domain: 'example.com' },
+    { domain: 'demoapp.wicorn29.net' }
+  ];
+  let editingAppDomain = null;
+
+  // UI refs
+  const loginForm = document.getElementById('login-form');
+  const dashboard = document.getElementById('dashboard');
+  const loginError = document.getElementById('login-error');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const loginBtn = document.getElementById('login-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  const userEmailSpan = document.getElementById('user-email');
+  const storageInfo = document.getElementById('storage-info');
+  const appsList = document.getElementById('apps-list');
+  const appdataSection = document.getElementById('appdata-section');
+  const currentAppDomainSpan = document.getElementById('current-app-domain');
+  const appdataTextarea = document.getElementById('appdata-textarea');
+  const saveAppdataBtn = document.getElementById('save-appdata-btn');
+  const cancelAppdataBtn = document.getElementById('cancel-appdata-btn');
+  const deleteAccountBtn = document.getElementById('delete-account-btn');
+
+  // Utils
+  function showLoginError(msg) {
+    loginError.textContent = msg;
+  }
+  function clearLoginError() {
+    loginError.textContent = '';
+  }
+  function formatMB(bytes) {
+    return (bytes / (1024*1024)).toFixed(2) + ' MB';
+  }
+
+  // API calls
+  async function gentoken(email, password) {
+    const res = await fetch(`${API_BASE}/gentoken`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      throw new Error(`Login failed: ${res.status}`);
+    }
+    const data = await res.json();
+    if (!data.token) throw new Error('No token returned');
+    return data.token;
+  }
+
+  async function fetchStorageLeft() {
+    const res = await fetch(`${API_BASE}/storageleft`, {
+      headers: { Authorization: `Bearer ${bearerToken}` },
+      credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch storage info');
+    const data = await res.json();
+    return data.storageLeftBytes;
+  }
+
+  async function fetchAppData(domain) {
+    // GET /appdata requires Origin header matching domain
+    const res = await fetch(`${API_BASE}/appdata`, {
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+        Origin: `https://${domain}`,
+      },
+      credentials: 'include'
+    });
+    if (res.status === 404) return null; // no data
+    if (!res.ok) throw new Error('Failed to fetch app data');
+    return res.json();
+  }
+
+  async function saveAppData(domain, jsonData) {
+    const res = await fetch(`${API_BASE}/appdata`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+        'Content-Type': 'application/json',
+        Origin: `https://${domain}`
+      },
+      credentials: 'include',
+      body: JSON.stringify(jsonData)
+    });
+    if (!res.ok) throw new Error('Failed to save app data');
+    return true;
+  }
+
+  async function deleteAppData(domain) {
+    const res = await fetch(`${API_BASE}/appdata`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+        Origin: `https://${domain}`
+      },
+      credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to delete app data');
+    return true;
+  }
+
+  async function deleteAccount() {
+    const res = await fetch(`${API_BASE}/delete`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+        Origin: `https://wicorn29.net`
+      },
+      credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to delete account');
+    return true;
+  }
+
+  // Render apps list
+  function renderAppsList() {
+    appsList.innerHTML = '';
+    if (apps.length === 0) {
+      const li = document.createElement('li');
+      li.textContent = 'No apps found.';
+      appsList.appendChild(li);
+      return;
+    }
+    apps.forEach(app => {
+      const li = document.createElement('li');
+      li.className = 'app-domain';
+      li.textContent = app.domain;
+
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'app-actions';
+
+      const viewBtn = document.createElement('button');
+      viewBtn.className = 'view';
+      viewBtn.textContent = 'View';
+      viewBtn.onclick = () => onViewAppData(app.domain);
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit';
+      editBtn.textContent = 'Edit';
+      editBtn.onclick = () => onEditAppData(app.domain);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.onclick = () => onDeleteAppData(app.domain);
+
+      actionsDiv.appendChild(viewBtn);
+      actionsDiv.appendChild(editBtn);
+      actionsDiv.appendChild(deleteBtn);
+
+      li.appendChild(actionsDiv);
+      appsList.appendChild(li);
+    });
+  }
+
+  async function onViewAppData(domain) {
+    try {
+      const data = await fetchAppData(domain);
+      alert(`App data for ${domain}:\n\n` + JSON.stringify(data, null, 2));
+    } catch (err) {
+      alert(`Error fetching app data for ${domain}: ${err.message}`);
+    }
+  }
+
+  async function onEditAppData(domain) {
+    try {
+      const data = await fetchAppData(domain) || {};
+      editingAppDomain = domain;
+      currentAppDomainSpan.textContent = domain;
+      appdataTextarea.value = JSON.stringify(data, null, 2);
+      appdataSection.style.display = 'block';
+    } catch (err) {
+      alert(`Error fetching app data for ${domain}: ${err.message}`);
+    }
+  }
+
+  async function onDeleteAppData(domain) {
+    if (!confirm(`Delete app data for "${domain}"? This cannot be undone.`)) return;
+    try {
+      await deleteAppData(domain);
+      alert(`Deleted app data for ${domain}`);
+    } catch (err) {
+      alert(`Error deleting app data for ${domain}: ${err.message}`);
+    }
+  }
+
+  saveAppdataBtn.onclick = async () => {
+    if (!editingAppDomain) return;
+    try {
+      const parsed = JSON.parse(appdataTextarea.value);
+      await saveAppData(editingAppDomain, parsed);
+      alert(`App data saved for ${editingAppDomain}`);
+      editingAppDomain = null;
+      appdataSection.style.display = 'none';
+    } catch (err) {
+      alert('Failed to save app data: ' + err.message);
+    }
+  };
+
+  cancelAppdataBtn.onclick = () => {
+    editingAppDomain = null;
+    appdataSection.style.display = 'none';
+  };
+
+  logoutBtn.onclick = () => {
+    bearerToken = null;
+    currentUserEmail = '';
+    dashboard.style.display = 'none';
+    loginForm.style.display = 'block';
+    emailInput.value = '';
+    passwordInput.value = '';
+  };
+
+  deleteAccountBtn.onclick = async () => {
+    if (!confirm('Are you absolutely sure you want to delete your entire account? This action cannot be undone.')) return;
+    try {
+      await deleteAccount();
+      alert('Your account was deleted.');
+      logoutBtn.onclick();
+    } catch (err) {
+      alert('Failed to delete account: ' + err.message);
+    }
+  };
+
+  loginBtn.onclick = async () => {
+    clearLoginError();
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (!email || !password) {
+      showLoginError('Please enter email and password.');
+      return;
+    }
+    try {
+      loginBtn.disabled = true;
+      const token = await gentoken(email, password);
+      bearerToken = token;
+      currentUserEmail = email;
+      userEmailSpan.textContent = currentUserEmail;
+
+      loginForm.style.display = 'none';
+      dashboard.style.display = 'block';
+
+      // Fetch storage left and show
+      const storageLeftBytes = await fetchStorageLeft();
+      // Assume total quota 128MB for demo
+      const totalBytes = 128 * 1024 * 1024;
+      const usedBytes = totalBytes - storageLeftBytes;
+      storageInfo.textContent = `Used ${formatMB(usedBytes)} / ${formatMB(totalBytes)}`;
+
+      renderAppsList();
+
+    } catch (err) {
+      showLoginError(err.message);
+    } finally {
+      loginBtn.disabled = false;
+    }
+  };
+})();
+</script>
+
+</body>
+</html>
